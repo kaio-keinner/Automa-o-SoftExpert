@@ -247,18 +247,144 @@ function extrairDadosSoftExpert() {
 // FUNÇÕES DE INJEÇÃO / PREENCHIMENTO DE FORMULÁRIO (SOFTEXPERT REACT/DHTMLX)
 // ==============================================================================
 
-function normalizarDataBR(dataStr) {
-  if (!dataStr) return "";
+function extrairPartesData(dataStr) {
+  if (!dataStr) return null;
   const s = String(dataStr).trim().replace(/^['"]|['"]$/g, "");
   
+  // YYYY-MM-DD ou YYYY/MM/DD
+  const mIso = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (mIso) {
+    return {
+      ano: mIso[1],
+      mes: mIso[2].padStart(2, "0"),
+      dia: mIso[3].padStart(2, "0")
+    };
+  }
+
+  // DD/MM/YYYY ou DD-MM-YYYY
   const mBr = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
   if (mBr) {
-    const dia = mBr[1].padStart(2, "0");
-    const mes = mBr[2].padStart(2, "0");
-    const ano = mBr[3];
-    return `${dia}/${mes}/${ano}`;
+    return {
+      dia: mBr[1].padStart(2, "0"),
+      mes: mBr[2].padStart(2, "0"),
+      ano: mBr[3]
+    };
   }
-  return s;
+
+  return null;
+}
+
+function normalizarDataBR(dataStr) {
+  const p = extrairPartesData(dataStr);
+  return p ? `${p.dia}/${p.mes}/${p.ano}` : dataStr;
+}
+
+function injetarPatchMomentEmTodosOsDocs() {
+  const docs = coletarTodosOsDocumentos();
+  for (const doc of docs) {
+    try {
+      if (doc.getElementById("__se_moment_patch__")) continue;
+      const script = doc.createElement("script");
+      script.id = "__se_moment_patch__";
+      script.textContent = `
+        (function() {
+          function aplicarPatch(m) {
+            if (!m || m.__seCustomFallback) return;
+            m.__seCustomFallback = true;
+            var prevFallback = m.createFromInputFallback;
+            m.createFromInputFallback = function(config) {
+              if (typeof config._i === 'string') {
+                var match = config._i.match(/^(\\d{1,2})[-/](\\d{1,2})[-/](\\d{4})$/);
+                if (match) {
+                  var d = parseInt(match[1], 10);
+                  var mo = parseInt(match[2], 10) - 1;
+                  var y = parseInt(match[3], 10);
+                  config._d = new Date(y, mo, d, 12, 0, 0);
+                  config._isValid = true;
+                  return;
+                }
+              }
+              if (typeof prevFallback === 'function') {
+                prevFallback(config);
+              } else {
+                config._d = new Date(config._i);
+              }
+            };
+          }
+
+          if (window.moment) {
+            aplicarPatch(window.moment);
+          }
+          try {
+            var _origMoment = window.moment;
+            Object.defineProperty(window, 'moment', {
+              configurable: true,
+              enumerable: true,
+              get: function() { return _origMoment; },
+              set: function(val) {
+                _origMoment = val;
+                aplicarPatch(val);
+              }
+            });
+          } catch(e) {}
+        })();
+      `;
+      (doc.head || doc.documentElement).appendChild(script);
+      script.remove();
+    } catch (e) {
+      console.warn("Erro ao injetar patch do moment:", e);
+    }
+  }
+}
+
+function preencherCampoData(elData, dataStr) {
+  if (!elData) return false;
+
+  const partes = extrairPartesData(dataStr);
+  if (!partes) return false;
+
+  const { dia, mes, ano } = partes;
+  const dataBr = `${dia}/${mes}/${ano}`;
+  const dataIso = `${ano}-${mes}-${dia}`;
+  const dateObj = new Date(Number(ano), Number(mes) - 1, Number(dia), 12, 0, 0);
+
+  // 1. Aplica o patch no moment.js do SoftExpert
+  injetarPatchMomentEmTodosOsDocs();
+
+  // 2. Tenta invocar via React Fiber / Props (DayPickerInput onDayChange)
+  try {
+    let cur = elData;
+    for (let i = 0; i < 5 && cur; i++) {
+      const pKey = Object.keys(cur).find(k => k.startsWith("__reactProps") || k.startsWith("__reactEventHandlers"));
+      if (pKey && cur[pKey]) {
+        const props = cur[pKey];
+        if (typeof props.onDayChange === "function") {
+          props.onDayChange(dateObj, {}, elData);
+          break;
+        }
+      }
+      cur = cur.parentElement;
+    }
+  } catch (err) {
+    console.warn("Erro ao tentar onDayChange:", err);
+  }
+
+  // 3. Define o valor nativo no input com a data BR
+  setNativeValue(elData, dataBr);
+
+  // 4. Também notifica o onChange do React diretamente se disponível
+  try {
+    const pKey = Object.keys(elData).find(k => k.startsWith("__reactProps") || k.startsWith("__reactEventHandlers"));
+    if (pKey && elData[pKey] && typeof elData[pKey].onChange === "function") {
+      elData[pKey].onChange({
+        target: { value: dataBr, name: elData.name, id: elData.id },
+        currentTarget: { value: dataBr, name: elData.name, id: elData.id },
+        bubbles: true
+      });
+    }
+  } catch (err) {}
+
+  return true;
 }
 
 function coletarTodosOsDocumentos() {
@@ -599,8 +725,8 @@ function preencherFormularioApontamento(dados) {
 
   // 2. Campo Data de apontamento
   const elData = buscarCampoEmTodosOsDocs(buscarCampoData);
-  if (elData && dataFormatada) {
-    relatorio.data = setNativeValue(elData, dataFormatada);
+  if (elData && dados.data) {
+    relatorio.data = preencherCampoData(elData, dados.data);
   } else if (!elData) {
     relatorio.erros.push("Data");
   }
@@ -686,6 +812,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const rel = preencherFormularioApontamento(request.dados);
     sendResponse({ sucesso: true, relatorio: rel });
   }
-  return true;
-});
-
+// Inicializa patch do moment logo no carregamento
+try {
+  injetarPatchMomentEmTodosOsDocs();
+} catch (e) {}
