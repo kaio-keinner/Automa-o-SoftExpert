@@ -286,53 +286,10 @@ function injetarPatchMomentEmTodosOsDocs() {
       if (doc.getElementById("__se_moment_patch__")) continue;
       const script = doc.createElement("script");
       script.id = "__se_moment_patch__";
-      script.textContent = `
-        (function() {
-          function aplicarPatch(m) {
-            if (!m || m.__seCustomFallback) return;
-            m.__seCustomFallback = true;
-            var prevFallback = m.createFromInputFallback;
-            m.createFromInputFallback = function(config) {
-              if (typeof config._i === 'string') {
-                var match = config._i.match(/^(\\d{1,2})[-/](\\d{1,2})[-/](\\d{4})$/);
-                if (match) {
-                  var d = parseInt(match[1], 10);
-                  var mo = parseInt(match[2], 10) - 1;
-                  var y = parseInt(match[3], 10);
-                  config._d = new Date(y, mo, d, 12, 0, 0);
-                  config._isValid = true;
-                  return;
-                }
-              }
-              if (typeof prevFallback === 'function') {
-                prevFallback(config);
-              } else {
-                config._d = new Date(config._i);
-              }
-            };
-          }
-
-          if (window.moment) {
-            aplicarPatch(window.moment);
-          }
-          try {
-            var _origMoment = window.moment;
-            Object.defineProperty(window, 'moment', {
-              configurable: true,
-              enumerable: true,
-              get: function() { return _origMoment; },
-              set: function(val) {
-                _origMoment = val;
-                aplicarPatch(val);
-              }
-            });
-          } catch(e) {}
-        })();
-      `;
+      script.src = chrome.runtime.getURL("patch-moment.js");
       (doc.head || doc.documentElement).appendChild(script);
-      script.remove();
     } catch (e) {
-      console.warn("Erro ao injetar patch do moment:", e);
+      console.warn("Erro ao injetar script do moment:", e);
     }
   }
 }

@@ -23,9 +23,30 @@
         "https://botuvera.softexpert.com/*"
       ],
       "js": [
+        "patch-moment.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://botuvera.softexpert.com/*"
+      ],
+      "js": [
         "content.js"
       ],
       "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "patch-moment.js"
+      ],
+      "matches": [
+        "https://botuvera.softexpert.com/*"
+      ]
     }
   ]
 }

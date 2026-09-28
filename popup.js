@@ -444,6 +444,15 @@ async function preencherFormularioNoSE() {
 
   exibirStatus(`⚡ Injetando dados do chamado ${chamado} no SoftExpert...`, "info");
 
+  // Garante que o patch do Moment.js esteja ativo no MAIN world sem violar CSP
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      world: "MAIN",
+      files: ["patch-moment.js"]
+    });
+  } catch (e) {}
+
   function processarResposta(resp) {
     if (!resp) {
       exibirStatus("Formulário preenchido! Verifique a tela do SoftExpert.", "sucesso");
