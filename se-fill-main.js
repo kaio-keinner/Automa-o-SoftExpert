@@ -39,18 +39,62 @@
     return p ? `${p.dia}/${p.mes}/${p.ano}` : dataStr;
   }
 
-  // --- Feedback visual momentâneo de sucesso / erro ---
+  // --- Injeção de estilos de animação minimalistas ---
+  function injetarEstilosAnimacao() {
+    if (document.getElementById("__se_inject_styles__")) return;
+    try {
+      const style = document.createElement("style");
+      style.id = "__se_inject_styles__";
+      style.textContent = `
+        @keyframes seGlowPulse {
+          0% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.7); border-color: #1a73e8 !important; }
+          50% { box-shadow: 0 0 0 6px rgba(26, 115, 232, 0.2); border-color: #1a73e8 !important; }
+          100% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0); }
+        }
+        @keyframes seSuccessWave {
+          0% { background-color: #e8f0fe; border-color: #1a73e8; }
+          40% { background-color: #e6f4ea; border-color: #1e8e3e; box-shadow: 0 0 0 4px rgba(30, 142, 62, 0.25); }
+          100% { background-color: #f6fbf7; border-color: #1e8e3e; box-shadow: none; }
+        }
+        .se-animating-field {
+          animation: seGlowPulse 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+          background-color: #f8fafd !important;
+          transition: border-color 0.2s ease, background-color 0.2s ease !important;
+        }
+        .se-success-field {
+          animation: seSuccessWave 0.7s ease-out forwards !important;
+          border: 1.5px solid #1e8e3e !important;
+        }
+      `;
+      (document.head || document.documentElement).appendChild(style);
+    } catch (e) {}
+  }
+
+  function animarInicioCampo(el) {
+    if (!el) return;
+    injetarEstilosAnimacao();
+    try {
+      el.classList.add("se-animating-field");
+      el.classList.remove("se-success-field");
+    } catch (e) {}
+  }
+
   function aplicarFeedbackVisual(el, sucesso = true) {
     if (!el) return;
+    injetarEstilosAnimacao();
     try {
-      const oldBorder = el.style.border;
-      const oldBg = el.style.backgroundColor;
-      el.style.border = sucesso ? "2px solid #16a34a" : "2px solid #dc2626";
-      el.style.backgroundColor = sucesso ? "#f0fdf4" : "#fef2f2";
-      setTimeout(() => {
-        el.style.border = oldBorder;
-        el.style.backgroundColor = oldBg;
-      }, 2500);
+      el.classList.remove("se-animating-field");
+      if (sucesso) {
+        el.classList.add("se-success-field");
+        setTimeout(() => {
+          el.classList.remove("se-success-field");
+        }, 2500);
+      } else {
+        el.style.border = "1.5px solid #d93025";
+        setTimeout(() => {
+          el.style.border = "";
+        }, 2500);
+      }
     } catch (e) {}
   }
 
@@ -211,6 +255,7 @@
     const el = getDateInput();
     if (!el) return { ok: false, reason: 'campo "Data de apontamento:" não encontrado' };
 
+    animarInicioCampo(el);
     const dataBr = normalizarDataBR(ddmmyyyy);
 
     el.scrollIntoView({ block: 'center' });
@@ -283,6 +328,7 @@
       return { ok: true, via: 'calendar' };
     }
 
+    animarConclusaoCampo(el, false);
     return { ok: false, reason: 'falha na validação após input e calendário' };
   }
 
@@ -291,6 +337,7 @@
     const el = getChamadoInput();
     if (!el) return { ok: false, reason: 'lookup "Chamado:" não encontrado' };
 
+    animarInicioCampo(el);
     el.scrollIntoView({ block: 'center' });
     el.focus();
     el.click();
@@ -336,13 +383,14 @@
     }, 4000);
 
     const success = !!ok || (el.value || '').includes(numero);
-    if (success) aplicarFeedbackVisual(getChamadoInput() || el, true);
+    aplicarFeedbackVisual(getChamadoInput() || el, success);
     return { ok: success };
   }
 
   // --- 9. Preenchimento de Hora Início, Hora Fim e Atividade ---
   async function setTimeField(el, hhmm) {
     if (!el) return { ok: false };
+    animarInicioCampo(el);
     el.scrollIntoView({ block: 'center' });
     el.focus();
     await sleep(50);
@@ -382,7 +430,7 @@
     await sleep(80);
 
     const ok = el.value.replace(/[^0-9:]/g, '') === hhmm.replace(/[^0-9:]/g, '');
-    if (ok) aplicarFeedbackVisual(el, true);
+    aplicarFeedbackVisual(el, ok);
     return { ok };
   }
 
@@ -401,6 +449,7 @@
   async function setAtividade(texto) {
     const el = getAtividadeTextarea();
     if (!el) return { ok: false, reason: 'campo Atividade não encontrado' };
+    animarInicioCampo(el);
     el.scrollIntoView({ block: 'center' });
     el.focus();
     await sleep(50);
@@ -440,7 +489,7 @@
     await sleep(80);
 
     const ok = (el.value || '').trim().length > 0;
-    if (ok) aplicarFeedbackVisual(el, true);
+    aplicarFeedbackVisual(el, ok);
     return { ok };
   }
 

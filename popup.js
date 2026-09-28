@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   toggleBtn.addEventListener("click", () => {
     const isHidden = configBody.style.display === "none";
     configBody.style.display = isHidden ? "block" : "none";
-    iconToggle.innerText = isHidden ? "▲" : "▼";
+    if (iconToggle) iconToggle.classList.toggle("rotated", isHidden);
   });
 
   // Toggle do painel de detalhes do apontamento (Dados do Lançamento)
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     toggleDetalhesBtn.addEventListener("click", () => {
       const isHidden = detalhesBody.style.display === "none";
       detalhesBody.style.display = isHidden ? "block" : "none";
-      iconToggleDetalhes.innerText = isHidden ? "▲" : "▼";
+      iconToggleDetalhes.classList.toggle("rotated", isHidden);
     });
   }
 
@@ -390,7 +390,7 @@ async function carregarApontamentosPendentes() {
       return;
     }
 
-    badgeQtd.innerText = `⏳ ${listaPendentes.length} pendentes`;
+    badgeQtd.innerText = `${listaPendentes.length} pendentes`;
     badgeQtd.className = "badge badge-warning";
 
     selPendente.innerHTML = "";
@@ -436,6 +436,18 @@ function limparCamposApontamento() {
   document.getElementById("aptAtividade").value = "";
 }
 
+function setProgressoInjecao(visivel, texto = "Injetando dados no SoftExpert...") {
+  const el = document.getElementById("injectionProgress");
+  const txtEl = document.getElementById("injectionText");
+  if (!el) return;
+  if (visivel) {
+    if (txtEl) txtEl.innerText = texto;
+    el.style.display = "block";
+  } else {
+    el.style.display = "none";
+  }
+}
+
 async function preencherFormularioNoSE() {
   const chamado = document.getElementById("aptChamado").value.trim();
   const data = normalizarDataBR(document.getElementById("aptData").value.trim());
@@ -459,9 +471,11 @@ async function preencherFormularioNoSE() {
     return;
   }
 
-  exibirStatus(`⚡ Injetando dados do chamado ${chamado} no SoftExpert...`, "info");
+  setProgressoInjecao(true, `Injetando dados do chamado ${chamado}...`);
+  exibirStatus(`Injetando dados do chamado ${chamado} no SoftExpert...`, "info");
 
   function processarResposta(resp) {
+    setProgressoInjecao(false);
     if (!resp) {
       exibirStatus("Formulário preenchido! Verifique a tela do SoftExpert.", "sucesso");
       return;
@@ -469,12 +483,12 @@ async function preencherFormularioNoSE() {
     const rel = resp.relatorio || {};
     const total = [rel.chamado, rel.data, rel.horaInicio, rel.horaFim, rel.atividade].filter(Boolean).length;
     if (total === 5) {
-      exibirStatus(`✅ Todos os 5 campos do chamado ${chamado} preenchidos com sucesso no SE!`, "sucesso");
+      exibirStatus(`Todos os 5 campos do chamado ${chamado} preenchidos com sucesso no SE!`, "sucesso");
     } else if (total > 0) {
       const faltou = rel.erros && rel.erros.length > 0 ? rel.erros.join(", ") : "alguns campos";
-      exibirStatus(`⚠️ Preenchido parcialmente (${total}/5). Faltou localizar: ${faltou}`, "erro");
+      exibirStatus(`Preenchido parcialmente (${total}/5). Faltou localizar: ${faltou}`, "erro");
     } else {
-      exibirStatus("⚠️ Nenhum campo do formulário de apontamento foi localizado nesta tela.", "erro");
+      exibirStatus("Nenhum campo do formulário de apontamento foi localizado nesta tela.", "erro");
     }
   }
 
@@ -593,16 +607,16 @@ async function marcarComoApontadoNoObsidian() {
       }
 
       const badgeQtd = document.getElementById("badgeQtdPendentes");
-      badgeQtd.innerText = `⏳ ${listaPendentes.length} pendentes`;
+      badgeQtd.innerText = `${listaPendentes.length} pendentes`;
 
       const selPendente = document.getElementById("selChamadoPendente");
       selPendente.innerHTML = "";
       if (listaPendentes.length === 0) {
-        selPendente.innerHTML = "<option value=''>🎉 Todos os chamados foram apontados!</option>";
+        selPendente.innerHTML = "<option value=''>Todos os chamados foram apontados!</option>";
         badgeQtd.innerText = "0 pendentes";
         badgeQtd.className = "badge badge-success";
         limparCamposApontamento();
-        exibirStatus(`✅ Chamado ${item.chamado} apontado! Todos concluídos!`, "sucesso");
+        exibirStatus(`Chamado ${item.chamado} apontado! Todos concluídos!`, "sucesso");
         return;
       }
 
@@ -907,7 +921,7 @@ async function buscarArquivoExistente(protocol, port, apiKey, folder, numeroCham
 function copiarMarkdownParaClipboard() {
   const markdown = montarMarkdown();
   navigator.clipboard.writeText(markdown).then(() => {
-    exibirStatus("📋 Markdown copiado com sucesso!", "sucesso");
+    exibirStatus("Markdown copiado com sucesso!", "sucesso");
   }).catch(() => {
     exibirStatus("Falha ao copiar para clipboard.", "erro");
   });
@@ -915,11 +929,25 @@ function copiarMarkdownParaClipboard() {
 
 function exibirStatus(texto, tipo) {
   const statusEl = document.getElementById("msgStatus");
+  if (!statusEl) return;
   if (!texto) {
     statusEl.style.display = "none";
     return;
   }
+
+  // Remove emojis residuais para um visual 100% minimalista
+  const textoLimpo = texto.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F1E0}-\u{1F1FF}\u{1FA70}-\u{1FAFF}]/gu, "").trim();
+
+  let iconSvg = "";
+  if (tipo === "sucesso") {
+    iconSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>';
+  } else if (tipo === "erro") {
+    iconSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
+  } else if (tipo === "info") {
+    iconSvg = '<svg class="spin-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke="rgba(26,115,232,0.25)"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-linecap="round"/></svg>';
+  }
+
   statusEl.className = `status ${tipo}`;
-  statusEl.innerText = texto;
-  statusEl.style.display = "block";
+  statusEl.innerHTML = `${iconSvg}<span>${textoLimpo}</span>`;
+  statusEl.style.display = "flex";
 }

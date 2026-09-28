@@ -815,27 +815,48 @@ function mostrarToastFeedback(relatorio) {
     toast.style.position = "fixed";
     toast.style.bottom = "24px";
     toast.style.right = "24px";
-    toast.style.padding = "14px 20px";
-    toast.style.background = totalPreenchidos === 5 ? "#15803d" : (totalPreenchidos > 0 ? "#ca8a04" : "#b91c1c");
+    toast.style.padding = "10px 18px";
+    toast.style.background = "#202124";
     toast.style.color = "#ffffff";
-    toast.style.fontSize = "13px";
-    toast.style.fontWeight = "bold";
-    toast.style.borderRadius = "8px";
-    toast.style.boxShadow = "0 6px 16px rgba(0,0,0,0.3)";
+    toast.style.fontSize = "12.5px";
+    toast.style.fontFamily = "Google Sans, -apple-system, BlinkMacSystemFont, Roboto, sans-serif";
+    toast.style.fontWeight = "500";
+    toast.style.borderRadius = "24px";
+    toast.style.boxShadow = "0 4px 14px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.12)";
     toast.style.zIndex = "99999999";
-    toast.style.transition = "all 0.3s ease";
-    toast.style.lineHeight = "1.4";
+    toast.style.display = "flex";
+    toast.style.alignItems = "center";
+    toast.style.gap = "8px";
+    toast.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(10px)";
 
-    let msg = `⚡ Apontamento preenchido (${totalPreenchidos}/5 campos)!`;
-    if (totalPreenchidos < 5 && relatorio.erros && relatorio.erros.length > 0) {
-      msg += `\n⚠️ Faltou localizar: ${relatorio.erros.join(", ")}`;
+    let iconSvg = "";
+    if (totalPreenchidos === 5) {
+      iconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="#34a853"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>';
+    } else if (totalPreenchidos > 0) {
+      iconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="#fbbc04"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>';
+    } else {
+      iconSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="#ea4335"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
     }
-    toast.innerText = msg;
 
+    let msg = `Apontamento preenchido (${totalPreenchidos}/5 campos)`;
+    if (totalPreenchidos < 5 && relatorio.erros && relatorio.erros.length > 0) {
+      msg += ` · Pendente: ${relatorio.erros.join(", ")}`;
+    }
+
+    toast.innerHTML = `${iconSvg}<span>${msg}</span>`;
     docAlvo.body.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+      toast.style.transform = "translateY(0)";
+    });
+
     setTimeout(() => {
       toast.style.opacity = "0";
-      setTimeout(() => toast.remove(), 400);
+      toast.style.transform = "translateY(10px)";
+      setTimeout(() => toast.remove(), 350);
     }, 3200);
   } catch (e) {}
 }
