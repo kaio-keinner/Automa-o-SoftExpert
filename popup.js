@@ -28,6 +28,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     iconToggle.innerText = isHidden ? "▲" : "▼";
   });
 
+  // Toggle do painel de detalhes do apontamento (Dados do Lançamento)
+  const toggleDetalhesBtn = document.getElementById("toggleDetalhesApontamento");
+  const detalhesBody = document.getElementById("detalhesApontamentoBody");
+  const iconToggleDetalhes = document.getElementById("iconToggleDetalhes");
+  if (toggleDetalhesBtn && detalhesBody && iconToggleDetalhes) {
+    toggleDetalhesBtn.addEventListener("click", () => {
+      const isHidden = detalhesBody.style.display === "none";
+      detalhesBody.style.display = isHidden ? "block" : "none";
+      iconToggleDetalhes.innerText = isHidden ? "▲" : "▼";
+    });
+  }
+
   // Carrega configurações salvas ou padrão
   chrome.storage.sync.get(["obsidianApiKey", "obsidianPort", "obsidianProtocol", "obsidianVaultFolder"], (cfg) => {
     document.getElementById("apiKey").value = cfg.obsidianApiKey || DEFAULT_API_KEY;

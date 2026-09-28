@@ -204,36 +204,41 @@
     </div>
 
     <div class="card" id="cardDetalhesApontamento">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <span style="font-weight: 700; color: #1e40af;">Dados do Lançamento</span>
-        <span id="badgeItemIndex" class="badge" style="background: #e2e8f0; color: #475569;">#1</span>
+      <div id="toggleDetalhesApontamento" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+        <div>
+          <span style="font-weight: 700; color: #1e40af;">📝 Dados do Lançamento</span>
+          <span id="badgeItemIndex" class="badge" style="background: #e2e8f0; color: #475569; margin-left: 6px;">#1</span>
+        </div>
+        <span id="iconToggleDetalhes" style="font-size: 11px; color: #64748b; font-weight: bold;">▼</span>
       </div>
       
-      <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-        <div style="flex: 1;">
-          <label class="label">Chamado:</label>
-          <input type="text" id="aptChamado" style="font-weight: bold; background: #f1f5f9;" readonly>
+      <div id="detalhesApontamentoBody" style="margin-top: 8px; display: none;">
+        <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+          <div style="flex: 1;">
+            <label class="label">Chamado:</label>
+            <input type="text" id="aptChamado" style="font-weight: bold; background: #f1f5f9;" readonly>
+          </div>
+          <div style="flex: 1.2;">
+            <label class="label">Data Apontamento:*</label>
+            <input type="text" id="aptData" placeholder="DD/MM/YYYY">
+          </div>
         </div>
-        <div style="flex: 1.2;">
-          <label class="label">Data Apontamento:*</label>
-          <input type="text" id="aptData" placeholder="DD/MM/YYYY">
-        </div>
-      </div>
 
-      <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-        <div style="flex: 1;">
-          <label class="label">Hora Início:*</label>
-          <input type="text" id="aptHoraInicio" placeholder="HH:MM">
+        <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+          <div style="flex: 1;">
+            <label class="label">Hora Início:*</label>
+            <input type="text" id="aptHoraInicio" placeholder="HH:MM">
+          </div>
+          <div style="flex: 1;">
+            <label class="label">Hora Fim:*</label>
+            <input type="text" id="aptHoraFim" placeholder="HH:MM">
+          </div>
         </div>
-        <div style="flex: 1;">
-          <label class="label">Hora Fim:*</label>
-          <input type="text" id="aptHoraFim" placeholder="HH:MM">
-        </div>
-      </div>
 
-      <div class="card-row">
-        <label class="label">Atividade Executada:*</label>
-        <textarea id="aptAtividade" style="height: 75px;" placeholder="Descrição do que foi feito"></textarea>
+        <div class="card-row">
+          <label class="label">Atividade Executada:*</label>
+          <textarea id="aptAtividade" style="height: 75px;" placeholder="Descrição do que foi feito"></textarea>
+        </div>
       </div>
     </div>
 
