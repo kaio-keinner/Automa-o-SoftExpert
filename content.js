@@ -812,7 +812,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const rel = preencherFormularioApontamento(request.dados);
     sendResponse({ sucesso: true, relatorio: rel });
   }
+  return true;
+});
+
 // Inicializa patch do moment logo no carregamento
 try {
   injetarPatchMomentEmTodosOsDocs();
 } catch (e) {}
+
