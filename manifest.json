@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "SoftExpert to Obsidian - N1 Sankhya",
+  "version": "1.0",
+  "description": "Captura dados de chamados do SoftExpert da Botuverá e envia para o Obsidian via Local REST API",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://botuvera.softexpert.com/*",
+    "https://127.0.0.1:27124/*",
+    "http://127.0.0.1:27123/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Enviar para Obsidian"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://botuvera.softexpert.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "all_frames": true
+    }
+  ]
+}

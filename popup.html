@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { width: 420px; padding: 12px; margin: 0; background: #f8fafc; color: #1e293b; }
+    
+    /* Abas de Navegação */
+    .tab-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 7px 10px;
+      border: none;
+      background: #e2e8f0;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    
+    .badge { font-size: 10px; background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+    
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .card-row { margin-bottom: 6px; }
+    .label { font-weight: 600; color: #475569; display: block; margin-bottom: 2px; }
+    .val-text { color: #0f172a; font-weight: 500; word-break: break-all; }
+    
+    input[type="text"], input[type="password"], textarea, select {
+      width: 100%;
+      font-size: 11px;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: #ffffff;
+      color: #0f172a;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+    textarea { height: 70px; resize: vertical; }
+
+    .config-box {
+      font-size: 11px;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+    .config-header {
+      font-weight: 600;
+      color: #334155;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      user-select: none;
+    }
+
+    .btn-group { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    button.action-btn {
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease-in-out;
+    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-success:hover { background: #15803d; }
+    .btn-turbo { background: #7c3aed; color: white; }
+    .btn-turbo:hover { background: #6d28d9; }
+    .btn-secondary { background: #e2e8f0; color: #334155; }
+    .btn-secondary:hover { background: #cbd5e1; }
+
+    .status {
+      margin-top: 8px;
+      font-size: 11px;
+      text-align: center;
+      font-weight: 600;
+      padding: 6px;
+      border-radius: 4px;
+      display: none;
+    }
+    .status.sucesso { background: #dcfce7; color: #15803d; display: block; }
+    .status.erro { background: #fee2e2; color: #b91c1c; display: block; }
+    .status.info { background: #e0f2fe; color: #0369a1; display: block; }
+  </style>
+</head>
+<body>
+  <!-- Abas de Navegação -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabBtnCapturar">📥 Capturar Chamado</button>
+    <button class="tab-btn" id="tabBtnApontar">⏱️ Lançar Apontamentos</button>
+  </div>
+
+  <!-- Painel Colapsável de Configurações -->
+  <div class="config-box">
+    <div class="config-header" id="toggleConfig">
+      <span>⚙️ Configuração Obsidian REST API</span>
+      <span id="iconToggle">▼</span>
+    </div>
+    <div id="configBody" style="margin-top: 8px; display: none;">
+      <div style="margin-bottom: 6px;">
+        <label class="label">API Key do Obsidian:</label>
+        <input type="password" id="apiKey" value="0c0da5ffb4ad5fd30bbaf46fdf15bbc78211113402d2b8554cf1b257205244df">
+      </div>
+      <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+        <div style="flex: 1;">
+          <label class="label">Porta:</label>
+          <input type="text" id="apiPort" value="27124">
+        </div>
+        <div style="flex: 1.5;">
+          <label class="label">Protocolo:</label>
+          <select id="apiProtocol">
+            <option value="https" selected>HTTPS (27124)</option>
+            <option value="http">HTTP (27123)</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="label">Pasta no Vault (Obsidian):</label>
+        <input type="text" id="vaultFolder" value="2 - Chamados/{MES} - {NOME_MES}" placeholder="Ex: 2 - Chamados/{MES} - {NOME_MES}">
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ABA 1: CAPTURAR CHAMADO ==================== -->
+  <div id="viewCapturar">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-weight: 700; color: #0f172a;">Detalhes da Tela SE</span>
+        <div style="display: flex; gap: 4px;">
+          <span id="badgeTramites" class="badge" style="display: none; background: #e0f2fe; color: #0369a1;"></span>
+          <span id="badgeEtapa" class="badge">Execução</span>
+        </div>
+      </div>
+      <div class="card-row">
+        <span class="label">Número do Chamado:</span>
+        <span class="val-text" id="dispNumero">Identificando...</span>
+      </div>
+      <div class="card-row">
+        <span class="label">Título / Atividade:</span>
+        <span class="val-text" id="dispTitulo">...</span>
+      </div>
+      <div class="card-row">
+        <span class="label">Solicitante:</span>
+        <input type="text" id="dispSolicitante" placeholder="Nome do solicitante">
+      </div>
+      <div class="card-row">
+        <span class="label">Descrição do Problema:</span>
+        <textarea id="dispDescricao" placeholder="Descrição ou erro"></textarea>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="action-btn btn-primary" id="btnSalvarObsidian">🚀 Criar Nota no Obsidian</button>
+      <button class="action-btn btn-secondary" id="btnCopiarMarkdown">📋 Copiar Markdown Formatado</button>
+    </div>
+  </div>
+
+  <!-- ==================== ABA 2: LANÇAR APONTAMENTOS ==================== -->
+  <div id="viewApontar" style="display: none;">
+    <div class="card" style="background: #f8fafc; border-color: #cbd5e1;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span class="label" style="margin: 0; font-size: 11px;">FILA DE APONTAMENTOS:</span>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <span id="badgeQtdPendentes" class="badge badge-warning">0 pendentes</span>
+          <button id="btnRecarregarPendentes" style="background: none; border: none; cursor: pointer; padding: 0; font-size: 13px;" title="Recarregar do Obsidian">🔄</button>
+        </div>
+      </div>
+      <div id="dispPastaLendo" style="font-size: 10px; color: #64748b; margin-bottom: 4px; font-weight: 500;"></div>
+      <select id="selChamadoPendente" style="font-weight: 500; font-size: 11px; padding: 7px 6px;">
+        <option value="">Carregando chamados pendentes...</option>
+      </select>
+    </div>
+
+    <div class="card" id="cardDetalhesApontamento">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-weight: 700; color: #1e40af;">Dados do Lançamento</span>
+        <span id="badgeItemIndex" class="badge" style="background: #e2e8f0; color: #475569;">#1</span>
+      </div>
+      
+      <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+        <div style="flex: 1;">
+          <label class="label">Chamado:</label>
+          <input type="text" id="aptChamado" style="font-weight: bold; background: #f1f5f9;" readonly>
+        </div>
+        <div style="flex: 1.2;">
+          <label class="label">Data Apontamento:*</label>
+          <input type="text" id="aptData" placeholder="DD/MM/YYYY">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+        <div style="flex: 1;">
+          <label class="label">Hora Início:*</label>
+          <input type="text" id="aptHoraInicio" placeholder="HH:MM">
+        </div>
+        <div style="flex: 1;">
+          <label class="label">Hora Fim:*</label>
+          <input type="text" id="aptHoraFim" placeholder="HH:MM">
+        </div>
+      </div>
+
+      <div class="card-row">
+        <label class="label">Atividade Executada:*</label>
+        <textarea id="aptAtividade" style="height: 75px;" placeholder="Descrição do que foi feito"></textarea>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="action-btn btn-primary" id="btnPreencherSE">⚡ Preencher Formulário no SE</button>
+      <button class="action-btn btn-success" id="btnMarcarApontado">✅ Marcar como Apontado no Obsidian</button>
+      <button class="action-btn btn-turbo" id="btnPreencherEMarcar">🚀 Preencher & Marcar Próximo</button>
+    </div>
+  </div>
+
+  <div class="status" id="msgStatus"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
