@@ -188,6 +188,22 @@ Para viabilizar os apontamentos em lote do mês de **Setembro/2026**, foi gerado
   2. **Fechamento Automático do Calendário:** Disparo de `Enter` + `Escape`, remoção de foco (`blur`) e ocultação forçada de qualquer `.DayPickerInput-Overlay` aberta.
   3. **Clipboard Backup:** Ao clicar no botão, a data também é escrita na Área de Transferência do Windows (`navigator.clipboard.writeText`), permitindo Ctrl+V manual a qualquer momento se o usuário preferir.
 
+### 5.9 Desacoplamento do Campo Desabilitado, Mundo MAIN e Cascata de Validação
+- **Sintoma:** O campo `Data` desabilitado de "Dados do responsável" recebia o valor e a borda verde, enquanto o campo obrigatório `Data de apontamento:` permanecia vazio ou revertia o valor após o blur. O lookup `Chamado:` não concluía a seleção com `total="1"`.
+- **Causa Raiz Técnica:**
+  1. **Colisão de Seletores:** O formulário possui múltiplos inputs de data. `input[title*="Data" i]` capturava o primeiro campo do DOM (`title="Data"`, `disabled`).
+  2. **React Controlled State (`_valueTracker`):** O React sobrescreve o setter nativo e ignora atribuições `.value = ...` se o tracker não for resetado.
+  3. **Mundos de Execução (ISOLATED vs MAIN):** Content scripts isolados não acessam `__reactProps$`, `__reactFiber$` e métodos internos do componente.
+- **Solução Implementada (`se-fill-main.js`):**
+  1. **Seletor Estrito:** `input[title="Data de apontamento:"]:not([disabled]):not([readonly])`, ignorando expressamente campos desabilitados.
+  2. **Injeção no Mundo MAIN:** Script dedicado executado no contexto da página com acesso a `__reactProps$` e `_valueTracker`.
+  3. **Ordem de Execução Blindada:**
+     - **Passo 1 (Chamado):** Digitação simulada ➔ espera da lista de sugestões (`[role="option"]`, `[class*="Lookup"] li`) ➔ clique no item ➔ verificação de confirmação (`total="1"`). Feito primeiro para evitar que o re-render do lookup limpe os demais campos.
+     - **Passo 2 (Data em Cascata):** Props `onChange` direto ➔ Setter nativo com reset de tracker ➔ Digitação simulada ➔ `Enter` + `onBlur` + `blur()` ➔ Verificação de persistência.
+     - **Passo 3 (Fallback DayPicker):** Se a validação não passar, o motor abre o calendário, navega pelos botões de mês/ano e clica na célula exata do dia (`DayPicker-Day`), fechando os overlays em seguida.
+     - **Passo 4 (Horas e Atividade):** Preenchimento de Hora Início, Hora Fim e Textarea de Atividade com validação e blur.
+  4. **Feedback Visual Condicionado:** A borda verde só é exibida nos campos após a verificação de integridade dos dados ter sido confirmada com sucesso.
+
 ---
 
 ## 6. Manual de Instalação e Operação
@@ -211,7 +227,7 @@ Para viabilizar os apontamentos em lote do mês de **Setembro/2026**, foi gerado
 2. Clique no ícone da extensão e vá para a aba **"⏱️ Lançar Apontamentos"**.
 3. O chamado pendente atual já estará selecionado no topo com a quantidade total de pendências.
 4. Escolha a ação desejada:
-   - **`⚡ Preencher Formulário no SE`**: Preenche os 5 campos (Chamado, Data brasileira, Início, Fim e Atividade) e fecha o calendário automaticamente.
+   - **`⚡ Preencher Formulário no SE`**: Preenche os 5 campos (Chamado com confirmação de lookup, Data brasileira com cascata de validação, Início, Fim e Atividade) e fecha o calendário automaticamente.
    - **`✅ Marcar como Apontado no Obsidian`**: Atualiza a nota no Obsidian para `apontado` e retira o chamado da fila.
    - **`🚀 Preencher & Marcar Próximo`**: Executa o preenchimento, confirma o status no Obsidian e avança automaticamente a fila para o próximo registro.
 
@@ -223,8 +239,9 @@ Para viabilizar os apontamentos em lote do mês de **Setembro/2026**, foi gerado
 softexpert-obsidian-n1/
 ├── manifest.json              # Manifesto V3 com permissões e scripts MAIN
 ├── popup.html                 # Interface gráfica com abas e card colapsável
-├── popup.js                   # Lógica da fila, REST API do Obsidian e clipboard
-├── content.js                 # Localizador DOM, eventos de foco e simulação de Ctrl+V
+├── popup.js                   # Lógica da fila, REST API do Obsidian e injeção MAIN
+├── content.js                 # Bridge de mensageria, seletores DOM e toasts
+├── se-fill-main.js            # Motor de injeção no mundo MAIN (React/Fiber/DayPicker)
 ├── patch-moment.js            # Interceptor do Moment.js para datas DD/MM/YYYY
 ├── README.md                  # Documentação rápida do repositório
 └── DOCUMENTACAO_COMPLETA.md   # Esta documentação detalhada consolidada

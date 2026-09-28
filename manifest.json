@@ -23,7 +23,8 @@
         "https://botuvera.softexpert.com/*"
       ],
       "js": [
-        "patch-moment.js"
+        "patch-moment.js",
+        "se-fill-main.js"
       ],
       "world": "MAIN",
       "run_at": "document_start",
@@ -42,7 +43,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "patch-moment.js"
+        "patch-moment.js",
+        "se-fill-main.js"
       ],
       "matches": [
         "https://botuvera.softexpert.com/*"

@@ -461,15 +461,6 @@ async function preencherFormularioNoSE() {
 
   exibirStatus(`⚡ Injetando dados do chamado ${chamado} no SoftExpert...`, "info");
 
-  // Garante que o patch do Moment.js esteja ativo no MAIN world sem violar CSP
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id, allFrames: true },
-      world: "MAIN",
-      files: ["patch-moment.js"]
-    });
-  } catch (e) {}
-
   function processarResposta(resp) {
     if (!resp) {
       exibirStatus("Formulário preenchido! Verifique a tela do SoftExpert.", "sucesso");
@@ -487,6 +478,50 @@ async function preencherFormularioNoSE() {
     }
   }
 
+  // ESTRATÉGIA 1: Execução no mundo MAIN com acesso direto ao React / Fiber / Moment
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      world: "MAIN",
+      files: ["patch-moment.js", "se-fill-main.js"]
+    });
+
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      world: "MAIN",
+      func: async (dados) => {
+        if (window.__seFill && typeof window.__seFill.fillAll === "function") {
+          return await window.__seFill.fillAll(dados);
+        }
+        return null;
+      },
+      args: [{ chamado, data, horaInicio, horaFim, atividade }]
+    });
+
+    let bestRel = null;
+    let maxCampos = 0;
+    if (Array.isArray(results)) {
+      for (const r of results) {
+        if (r && r.result) {
+          const rel = r.result;
+          const count = [rel.chamado, rel.data, rel.horaInicio, rel.horaFim, rel.atividade].filter(Boolean).length;
+          if (count > maxCampos) {
+            maxCampos = count;
+            bestRel = rel;
+          }
+        }
+      }
+    }
+
+    if (bestRel && maxCampos > 0) {
+      processarResposta({ sucesso: true, relatorio: bestRel });
+      return;
+    }
+  } catch (err) {
+    console.warn("Injeção direta no MAIN world encontrou restrição, usando fallback de mensageria:", err);
+  }
+
+  // ESTRATÉGIA 2: Fallback via mensageria para o content script
   chrome.tabs.sendMessage(tab.id, {
     action: "PREENCHER_APONTAMENTO",
     dados: { chamado, data, horaInicio, horaFim, atividade }

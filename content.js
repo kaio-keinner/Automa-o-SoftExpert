@@ -451,7 +451,7 @@ function buscarCampoEmTodosOsDocs(fnBusca) {
 }
 
 function setNativeValue(element, value) {
-  if (!element) return false;
+  if (!element || element.disabled || element.readOnly) return false;
   try {
     element.focus();
 
@@ -468,24 +468,33 @@ function setNativeValue(element, value) {
       element.value = value;
     }
 
+    if (element._valueTracker) {
+      try { element._valueTracker.setValue(""); } catch(e) {}
+    }
+
     // Dispara bateria completa de eventos DOM para que React / DayPicker / DHTMLX sincronizem estado
-    element.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+    const ev = new Event("input", { bubbles: true, cancelable: true });
+    ev.simulated = true;
+    element.dispatchEvent(ev);
     element.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
     element.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter", code: "Enter" }));
     element.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Enter", code: "Enter" }));
     element.dispatchEvent(new Event("blur", { bubbles: true, cancelable: true }));
 
-    // Feedback visual momentâneo de sucesso no campo
-    const oldBorder = element.style.border;
-    const oldBg = element.style.backgroundColor;
-    element.style.border = "2px solid #16a34a";
-    element.style.backgroundColor = "#f0fdf4";
-    setTimeout(() => {
-      element.style.border = oldBorder;
-      element.style.backgroundColor = oldBg;
-    }, 2500);
+    // Aplica feedback visual de sucesso somente se o valor foi aceito
+    const ok = (element.value || "").trim().length > 0;
+    if (ok) {
+      const oldBorder = element.style.border;
+      const oldBg = element.style.backgroundColor;
+      element.style.border = "2px solid #16a34a";
+      element.style.backgroundColor = "#f0fdf4";
+      setTimeout(() => {
+        element.style.border = oldBorder;
+        element.style.backgroundColor = oldBg;
+      }, 2500);
+    }
 
-    return true;
+    return ok;
   } catch (err) {
     console.warn("Erro ao aplicar setNativeValue no SoftExpert:", err);
     try {
@@ -515,18 +524,18 @@ function buscarInputPorTextoRotulo(doc, termo) {
     // 1. <label for="...">
     if (el.tagName === "LABEL" && el.htmlFor) {
       const target = doc.getElementById(el.htmlFor);
-      if (target) return target;
+      if (target && !target.disabled && !target.readOnly) return target;
     }
 
     // 2. Input contido dentro do próprio elemento
-    const inpDentro = el.querySelector("input:not([type=\"hidden\"]), textarea");
+    const inpDentro = el.querySelector("input:not([type=\"hidden\"]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly])");
     if (inpDentro) return inpDentro;
 
     // 3. Irmãos subsequentes imediatos
     let prox = el.nextElementSibling;
     while (prox) {
-      if (prox.tagName === "INPUT" || prox.tagName === "TEXTAREA") return prox;
-      const inpNoProx = prox.querySelector("input:not([type=\"hidden\"]), textarea");
+      if ((prox.tagName === "INPUT" || prox.tagName === "TEXTAREA") && !prox.disabled && !prox.readOnly) return prox;
+      const inpNoProx = prox.querySelector("input:not([type=\"hidden\"]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly])");
       if (inpNoProx) return inpNoProx;
       prox = prox.nextElementSibling;
     }
@@ -535,16 +544,15 @@ function buscarInputPorTextoRotulo(doc, termo) {
     let parent = el.parentElement;
     let depth = 0;
     while (parent && depth < 6 && parent.tagName !== "BODY" && parent.tagName !== "HTML") {
-      const inpParent = parent.querySelector("input:not([type=\"hidden\"]), textarea");
+      const inpParent = parent.querySelector("input:not([type=\"hidden\"]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly])");
       if (inpParent && !el.contains(inpParent)) {
         return inpParent;
       }
       
-      // Checa irmão do contêiner pai (ex: <div class="col label">...</div> <div class="col input">...</div>)
       let parentNext = parent.nextElementSibling;
       while (parentNext) {
-        if (parentNext.tagName === "INPUT" || parentNext.tagName === "TEXTAREA") return parentNext;
-        const inpPNext = parentNext.querySelector("input:not([type=\"hidden\"]), textarea");
+        if ((parentNext.tagName === "INPUT" || parentNext.tagName === "TEXTAREA") && !parentNext.disabled && !parentNext.readOnly) return parentNext;
+        const inpPNext = parentNext.querySelector("input:not([type=\"hidden\"]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly])");
         if (inpPNext) return inpPNext;
         parentNext = parentNext.nextElementSibling;
       }
@@ -564,21 +572,26 @@ function buscarInputPorTextoRotulo(doc, termo) {
 function buscarCampoChamado(doc) {
   if (!doc) return null;
 
+  // 0. Seletor exato com title "Chamado:" não desabilitado
+  const porTitle = doc.querySelector('input[title="Chamado:"]:not([disabled]):not([readonly])') ||
+                   doc.querySelector('input[title*="Chamado" i]:not([disabled]):not([readonly])');
+  if (porTitle) return porTitle;
+
   // 1. Rótulo específico
   const porRotulo = buscarInputPorTextoRotulo(doc, "Chamado") ||
                     buscarInputPorTextoRotulo(doc, "Solicitação") ||
                     buscarInputPorTextoRotulo(doc, "pesquisar");
-  if (porRotulo) return porRotulo;
+  if (porRotulo && !porRotulo.disabled && !porRotulo.readOnly) return porRotulo;
 
   // 2. Placeholder
-  const porPlaceholder = Array.from(doc.querySelectorAll("input:not([type=\"hidden\"])")).find(inp => {
+  const porPlaceholder = Array.from(doc.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([readonly])')).find(inp => {
     const ph = (inp.getAttribute("placeholder") || "").toLowerCase();
     return ph.includes("chamado") || ph.includes("pesquisar") || ph.includes("clique aqui");
   });
   if (porPlaceholder) return porPlaceholder;
 
   // 3. Name ou Id
-  const porNameId = Array.from(doc.querySelectorAll("input:not([type=\"hidden\"])")).find(inp => {
+  const porNameId = Array.from(doc.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([readonly])')).find(inp => {
     const s = ((inp.id || "") + " " + (inp.name || "")).toLowerCase();
     return s.includes("chamado") || s.includes("solicitacao") || s.includes("processo");
   });
@@ -590,18 +603,22 @@ function buscarCampoChamado(doc) {
 function buscarCampoData(doc) {
   if (!doc) return null;
 
-  // 0. Seletor exato com title "Data de apontamento:" visto no DevTools do SoftExpert
-  const porTitleExato = doc.querySelector('input[title*="Data de apontamento" i], [class*="FormInput"] input[title*="Data" i]');
+  // 0. Seletor exato com title "Data de apontamento:" NÃO DESABILITADO
+  const porTitleExato = doc.querySelector('input[title="Data de apontamento:"]:not([disabled]):not([readonly])') ||
+                        doc.querySelector('input[title*="Data de apontamento" i]:not([disabled]):not([readonly])');
   if (porTitleExato) return porTitleExato;
 
-  // 1. Componente DayPicker / Calendar do SoftExpert (React Lite)
-  const dayPickerInp = doc.querySelector(".DayPickerInput input, [class*=\"DayPicker\"] input, [class*=\"Calendar\"] input, [class*=\"DatePicker\"] input");
+  // 1. Componente DayPicker / Calendar do SoftExpert (React Lite) NÃO DESABILITADO
+  const dayPickerInp = Array.from(doc.querySelectorAll('.DayPickerInput input, [class*="DayPicker"] input, [class*="Calendar"] input, [class*="DatePicker"] input'))
+    .find(i => !i.disabled && !i.readOnly && !/^(data)$/i.test((i.title || "").trim()));
   if (dayPickerInp) return dayPickerInp;
 
-  // 2. Por placeholder clássico de data: DD/MM/YYYY, dd/mm/aaaa, etc.
-  const porPlaceholder = Array.from(doc.querySelectorAll("input:not([type=\"hidden\"])")).find(inp => {
+  // 2. Por placeholder clássico de data: DD/MM/YYYY, dd/mm/aaaa, etc. NÃO DESABILITADO
+  const porPlaceholder = Array.from(doc.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([readonly])')).find(inp => {
     const ph = (inp.getAttribute("placeholder") || "").toLowerCase();
-    return ph.includes("dd/mm") || ph.includes("aaaa") || ph.includes("yyyy") || ph.includes("__/__");
+    const title = (inp.title || "").toLowerCase();
+    if (title === "data") return false;
+    return (ph.includes("dd/mm") || ph.includes("aaaa") || ph.includes("yyyy") || ph.includes("__/__"));
   });
   if (porPlaceholder) return porPlaceholder;
 
@@ -609,22 +626,18 @@ function buscarCampoData(doc) {
   const porRotulo = buscarInputPorTextoRotulo(doc, "Data de apontamento") ||
                     buscarInputPorTextoRotulo(doc, "Data do apontamento") ||
                     buscarInputPorTextoRotulo(doc, "Data apontamento");
-  if (porRotulo) return porRotulo;
+  if (porRotulo && !porRotulo.disabled && !porRotulo.readOnly) return porRotulo;
 
   // 4. input type="date"
-  const inpDate = doc.querySelector("input[type=\"date\"]");
+  const inpDate = doc.querySelector('input[type="date"]:not([disabled]):not([readonly])');
   if (inpDate) return inpDate;
 
   // 5. Name ou Id
-  const porNameId = Array.from(doc.querySelectorAll("input:not([type=\"hidden\"])")).find(inp => {
+  const porNameId = Array.from(doc.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([readonly])')).find(inp => {
     const s = ((inp.id || "") + " " + (inp.name || "")).toLowerCase();
     return s.includes("dtapontamento") || s.includes("dataapontamento") || s.includes("dt_apontamento") || s.includes("data_apontamento");
   });
   if (porNameId) return porNameId;
-
-  // 6. Fallback amplo por label "Data"
-  const porRotuloGeral = buscarInputPorTextoRotulo(doc, "Data");
-  if (porRotuloGeral) return porRotuloGeral;
 
   return null;
 }
@@ -632,25 +645,29 @@ function buscarCampoData(doc) {
 function buscarCampoHoraInicio(doc) {
   if (!doc) return null;
 
+  // 0. Title específico
+  const porTitle = doc.querySelector('input[title*="Hora início" i]:not([disabled]):not([readonly]), input[title*="Hora inicio" i]:not([disabled]):not([readonly])');
+  if (porTitle) return porTitle;
+
   // 1. Rótulo "Hora inicio" ou "Início"
   const porRotulo = buscarInputPorTextoRotulo(doc, "Hora inicio") ||
                     buscarInputPorTextoRotulo(doc, "Hora início") ||
                     buscarInputPorTextoRotulo(doc, "Início");
-  if (porRotulo) return porRotulo;
+  if (porRotulo && !porRotulo.disabled && !porRotulo.readOnly) return porRotulo;
 
   // 2. Primeiro input com placeholder HH:MM
-  const inputsHHMM = Array.from(doc.querySelectorAll("input:not([type=\"hidden\"])")).filter(inp => {
+  const inputsHHMM = Array.from(doc.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([readonly])')).filter(inp => {
     const ph = (inp.getAttribute("placeholder") || "").toUpperCase();
     return ph.includes("HH:MM") || ph.includes("__:__");
   });
   if (inputsHHMM.length >= 1) return inputsHHMM[0];
 
   // 3. Timepicker input
-  const timePickers = Array.from(doc.querySelectorAll(".dhx_timepicker-input, [class*=\"timepicker\"] input, input[type=\"time\"]"));
+  const timePickers = Array.from(doc.querySelectorAll('.dhx_timepicker-input:not([disabled]), [class*="timepicker"] input:not([disabled]), input[type="time"]:not([disabled])'));
   if (timePickers.length >= 1) return timePickers[0];
 
   // 4. Name ou Id
-  const porNameId = Array.from(doc.querySelectorAll("input:not([type=\"hidden\"])")).find(inp => {
+  const porNameId = Array.from(doc.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([readonly])')).find(inp => {
     const s = ((inp.id || "") + " " + (inp.name || "")).toLowerCase();
     return s.includes("horainicio") || s.includes("hrinicio") || s.includes("hora_inicio");
   });
@@ -662,26 +679,30 @@ function buscarCampoHoraInicio(doc) {
 function buscarCampoHoraFim(doc) {
   if (!doc) return null;
 
+  // 0. Title específico
+  const porTitle = doc.querySelector('input[title*="Hora final" i]:not([disabled]):not([readonly]), input[title*="Hora fim" i]:not([disabled]):not([readonly]), input[title*="Hora término" i]:not([disabled]):not([readonly])');
+  if (porTitle) return porTitle;
+
   // 1. Rótulo "Hora final", "Hora fim", "Fim", "Término"
   const porRotulo = buscarInputPorTextoRotulo(doc, "Hora final") ||
                     buscarInputPorTextoRotulo(doc, "Hora fim") ||
                     buscarInputPorTextoRotulo(doc, "Fim") ||
                     buscarInputPorTextoRotulo(doc, "Término");
-  if (porRotulo) return porRotulo;
+  if (porRotulo && !porRotulo.disabled && !porRotulo.readOnly) return porRotulo;
 
   // 2. Segundo input com placeholder HH:MM
-  const inputsHHMM = Array.from(doc.querySelectorAll("input:not([type=\"hidden\"])")).filter(inp => {
+  const inputsHHMM = Array.from(doc.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([readonly])')).filter(inp => {
     const ph = (inp.getAttribute("placeholder") || "").toUpperCase();
     return ph.includes("HH:MM") || ph.includes("__:__");
   });
   if (inputsHHMM.length >= 2) return inputsHHMM[1];
 
   // 3. Timepicker input (segundo)
-  const timePickers = Array.from(doc.querySelectorAll(".dhx_timepicker-input, [class*=\"timepicker\"] input, input[type=\"time\"]"));
+  const timePickers = Array.from(doc.querySelectorAll('.dhx_timepicker-input:not([disabled]), [class*="timepicker"] input:not([disabled]), input[type="time"]:not([disabled])'));
   if (timePickers.length >= 2) return timePickers[1];
 
   // 4. Name ou Id
-  const porNameId = Array.from(doc.querySelectorAll("input:not([type=\"hidden\"])")).find(inp => {
+  const porNameId = Array.from(doc.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([readonly])')).find(inp => {
     const s = ((inp.id || "") + " " + (inp.name || "")).toLowerCase();
     return s.includes("horafim") || s.includes("horafinal") || s.includes("hrfim") || s.includes("hora_fim");
   });
@@ -693,20 +714,24 @@ function buscarCampoHoraFim(doc) {
 function buscarCampoAtividade(doc) {
   if (!doc) return null;
 
+  // 0. Title específico
+  const porTitle = doc.querySelector('textarea[title*="Atividade" i]:not([disabled]):not([readonly]), input[title*="Atividade" i]:not([disabled]):not([readonly])');
+  if (porTitle) return porTitle;
+
   // 1. Rótulo "Atividade executada" ou "Atividade"
   const porRotulo = buscarInputPorTextoRotulo(doc, "Atividade executada") ||
                     buscarInputPorTextoRotulo(doc, "Atividade");
-  if (porRotulo) return porRotulo;
+  if (porRotulo && !porRotulo.disabled && !porRotulo.readOnly) return porRotulo;
 
   // 2. Textarea na tela (geralmente só há um na janela de apontamento)
-  const textareas = Array.from(doc.querySelectorAll("textarea"));
+  const textareas = Array.from(doc.querySelectorAll('textarea:not([disabled]):not([readonly])'));
   if (textareas.length > 0) {
     const visivel = textareas.find(t => t.offsetParent !== null) || textareas[0];
     return visivel;
   }
 
   // 3. Name ou Id
-  const porNameId = Array.from(doc.querySelectorAll("textarea, input:not([type=\"hidden\"])")).find(inp => {
+  const porNameId = Array.from(doc.querySelectorAll('textarea:not([disabled]):not([readonly]), input:not([type="hidden"]):not([disabled]):not([readonly])')).find(inp => {
     const s = ((inp.id || "") + " " + (inp.name || "")).toLowerCase();
     return s.includes("atividade") || s.includes("descricao");
   });
@@ -727,9 +752,7 @@ function preencherFormularioApontamento(dados) {
 
   if (!dados) return relatorio;
 
-  const dataFormatada = normalizarDataBR(dados.data);
-
-  // 1. Campo Chamado
+  // 1. Campo Chamado PRIMEIRO (evita que re-render limpe campos já preenchidos)
   const elChamado = buscarCampoEmTodosOsDocs(buscarCampoChamado);
   if (elChamado && dados.chamado) {
     relatorio.chamado = setNativeValue(elChamado, dados.chamado);
@@ -737,7 +760,7 @@ function preencherFormularioApontamento(dados) {
     relatorio.erros.push("Chamado");
   }
 
-  // 2. Campo Data de apontamento
+  // 2. Campo Data de apontamento SEGUNDO
   const elData = buscarCampoEmTodosOsDocs(buscarCampoData);
   if (elData && dados.data) {
     relatorio.data = preencherCampoData(elData, dados.data);
@@ -817,14 +840,49 @@ function mostrarToastFeedback(relatorio) {
   } catch (e) {}
 }
 
+function executarPreenchimentoViaMainWorld(dados) {
+  return new Promise((resolve) => {
+    const reqId = "req_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
+    let timeoutId;
+
+    function onMsg(evt) {
+      if (evt.data && evt.data.type === "SE_FILL_RESPONSE" && evt.data.reqId === reqId) {
+        clearTimeout(timeoutId);
+        window.removeEventListener("message", onMsg);
+        resolve(evt.data.relatorio);
+      }
+    }
+
+    window.addEventListener("message", onMsg);
+    window.postMessage({ type: "SE_FILL_REQUEST", reqId, dados }, "*");
+
+    timeoutId = setTimeout(() => {
+      window.removeEventListener("message", onMsg);
+      resolve(null);
+    }, 8000);
+  });
+}
+
 // Ouve mensagens vindas do popup da extensão
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "CAPTURAR_SE") {
     const dados = extrairDadosSoftExpert();
     sendResponse(dados);
   } else if (request.action === "PREENCHER_APONTAMENTO") {
-    const rel = preencherFormularioApontamento(request.dados);
-    sendResponse({ sucesso: true, relatorio: rel });
+    (async () => {
+      // 1. Tenta preenchimento completo no MAIN world via se-fill-main.js
+      const relMain = await executarPreenchimentoViaMainWorld(request.dados);
+      if (relMain && [relMain.chamado, relMain.data, relMain.horaInicio, relMain.horaFim, relMain.atividade].filter(Boolean).length > 0) {
+        mostrarToastFeedback(relMain);
+        sendResponse({ sucesso: true, relatorio: relMain });
+        return;
+      }
+
+      // 2. Fallback local via DOM do content script
+      const relLocal = preencherFormularioApontamento(request.dados);
+      sendResponse({ sucesso: true, relatorio: relLocal });
+    })();
+    return true; // Mantém o canal de resposta assíncrono aberto
   }
   return true;
 });
