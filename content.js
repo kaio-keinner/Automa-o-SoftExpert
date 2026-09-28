@@ -305,10 +305,17 @@ function preencherCampoData(elData, dataStr) {
   const dataIso = `${ano}-${mes}-${dia}`;
   const dateObj = new Date(Number(ano), Number(mes) - 1, Number(dia), 12, 0, 0);
 
-  // 1. Aplica o patch no moment.js do SoftExpert
+  // 1. Simula foco real (incluindo focusin para o React ativar FormInput_focus_F8Lqn)
+  try {
+    elData.focus();
+    elData.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    elData.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+  } catch(e) {}
+
+  // 2. Aplica o patch no moment.js do SoftExpert
   injetarPatchMomentEmTodosOsDocs();
 
-  // 2. Tenta invocar via React Fiber / Props (DayPickerInput onDayChange)
+  // 3. Tenta invocar via React Fiber / Props (DayPickerInput onDayChange)
   try {
     let cur = elData;
     for (let i = 0; i < 5 && cur; i++) {
@@ -326,10 +333,10 @@ function preencherCampoData(elData, dataStr) {
     console.warn("Erro ao tentar onDayChange:", err);
   }
 
-  // 3. Define o valor nativo no input com a data BR
+  // 4. Define o valor nativo no input com a data BR
   setNativeValue(elData, dataBr);
 
-  // 4. Também notifica o onChange do React diretamente se disponível
+  // 5. Também notifica o onChange do React diretamente se disponível
   try {
     const pKey = Object.keys(elData).find(k => k.startsWith("__reactProps") || k.startsWith("__reactEventHandlers"));
     if (pKey && elData[pKey] && typeof elData[pKey].onChange === "function") {
@@ -340,6 +347,13 @@ function preencherCampoData(elData, dataStr) {
       });
     }
   } catch (err) {}
+
+  // 6. Finaliza foco com blur e focusout
+  try {
+    elData.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+    elData.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    elData.blur();
+  } catch(e) {}
 
   return true;
 }
@@ -536,6 +550,10 @@ function buscarCampoChamado(doc) {
 
 function buscarCampoData(doc) {
   if (!doc) return null;
+
+  // 0. Seletor exato com title "Data de apontamento:" visto no DevTools do SoftExpert
+  const porTitleExato = doc.querySelector('input[title*="Data de apontamento" i], [class*="FormInput"] input[title*="Data" i]');
+  if (porTitleExato) return porTitleExato;
 
   // 1. Componente DayPicker / Calendar do SoftExpert (React Lite)
   const dayPickerInp = doc.querySelector(".DayPickerInput input, [class*=\"DayPicker\"] input, [class*=\"Calendar\"] input, [class*=\"DatePicker\"] input");
