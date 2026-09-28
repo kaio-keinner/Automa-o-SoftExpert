@@ -1,7 +1,7 @@
 // se-fill-main.js - Executa no mundo MAIN para interagir diretamente com React / Fiber / Moment no SoftExpert
 (() => {
   if (window.__seFillInitialized) {
-    console.log("[SoftExpert-Fill] ✅ Módulo __seFill já carregado nesta janela.");
+    console.log("[SoftExpert-Fill] Módulo __seFill já carregado nesta janela.");
     return;
   }
   window.__seFillInitialized = true;
@@ -577,5 +577,5 @@
     getFiber
   };
 
-  console.log("[SoftExpert-Fill] 🚀 Motor de injeção MAIN world (window.__seFill) ativo!");
+  console.log("[SoftExpert-Fill] Motor de injeção MAIN world (window.__seFill) ativo!");
 })();

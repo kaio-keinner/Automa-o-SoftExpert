@@ -253,7 +253,7 @@ async function carregarApontamentosPendentes() {
   selPendente.innerHTML = "<option value=''>Carregando chamados do Obsidian...</option>";
   listaPendentes = [];
 
-  exibirStatus("🔍 Conectando ao Obsidian para carregar fila de chamados...", "info");
+  exibirStatus("Conectando ao Obsidian para carregar fila de chamados...", "info");
 
   try {
     // 1. Tenta listar a pasta resolvida
@@ -283,7 +283,7 @@ async function carregarApontamentosPendentes() {
     }
 
     if (dispPasta) {
-      dispPasta.innerText = `📁 Lendo: ${targetFolder} (${mdFiles.length} notas)`;
+      dispPasta.innerText = `Lendo: ${targetFolder} (${mdFiles.length} notas)`;
     }
 
     if (mdFiles.length === 0) {
@@ -382,7 +382,7 @@ async function carregarApontamentosPendentes() {
 
     // 3. Atualiza UI com a lista encontrada
     if (listaPendentes.length === 0) {
-      selPendente.innerHTML = "<option value=''>🎉 Todos os chamados já foram apontados!</option>";
+      selPendente.innerHTML = "<option value=''>Todos os chamados já foram apontados!</option>";
       badgeQtd.innerText = "0 pendentes";
       badgeQtd.className = "badge badge-success";
       limparCamposApontamento();
@@ -566,7 +566,7 @@ async function marcarComoApontadoNoObsidian() {
 
   const { apiKey, port, protocol } = getConfigObsidian();
   const item = itemSelecionado;
-  exibirStatus(`💾 Gravando status apontado para o chamado ${item.chamado}...`, "info");
+  exibirStatus(`Gravando status apontado para o chamado ${item.chamado}...`, "info");
 
   try {
     const content = await obterConteudoArquivo(protocol, port, apiKey, item.filePath);
@@ -685,7 +685,7 @@ function preencherDadosCaptura(resp) {
   const badgeTramites = document.getElementById("badgeTramites");
   if (badgeTramites) {
     if (resp.qtdTramites && resp.qtdTramites > 0) {
-      badgeTramites.innerText = `💬 ${resp.qtdTramites} trâmites`;
+      badgeTramites.innerText = `${resp.qtdTramites} trâmites`;
       badgeTramites.style.display = "inline-block";
     } else {
       badgeTramites.style.display = "none";
@@ -852,30 +852,30 @@ async function salvarChamadoNoObsidian() {
   const newFilename = `${dadosChamado.numeroChamado} - ${safeTitulo}.md`;
   const targetFullPath = resolvedFolder ? `${resolvedFolder}/${newFilename}` : newFilename;
 
-  exibirStatus("🔍 Verificando se chamado já existe no Obsidian...", "info");
+  exibirStatus("Verificando se chamado já existe no Obsidian...", "info");
 
   try {
     const existingFile = await buscarArquivoExistente(protocol, port, apiKey, resolvedFolder, dadosChamado.numeroChamado);
     let conteudoExistente = null;
 
     if (existingFile) {
-      exibirStatus("📥 Nota existente encontrada! Mesclando dados manuais...", "info");
+      exibirStatus("Nota existente encontrada! Mesclando dados manuais...", "info");
       conteudoExistente = await obterConteudoArquivo(protocol, port, apiKey, existingFile);
     }
 
     const markdown = montarMarkdown(conteudoExistente);
 
     if (existingFile && existingFile !== targetFullPath) {
-      exibirStatus("🔄 Título alterado: removendo nota anterior...", "info");
+      exibirStatus("Título alterado: removendo nota anterior...", "info");
       await deletarArquivo(protocol, port, apiKey, existingFile);
     }
 
-    exibirStatus("💾 Gravando no Obsidian...", "info");
+    exibirStatus("Gravando no Obsidian...", "info");
     const response = await salvarArquivo(protocol, port, apiKey, targetFullPath, markdown);
 
     if (response.ok || response.status === 200 || response.status === 201 || response.status === 204) {
       const acao = existingFile ? (existingFile !== targetFullPath ? "Renomeado e Atualizado" : "Atualizado") : "Criado";
-      exibirStatus(`✅ ${acao}: ${targetFullPath}`, "sucesso");
+      exibirStatus(`${acao}: ${targetFullPath}`, "sucesso");
     } else {
       const errText = await response.text();
       exibirStatus(`Erro (${response.status}): ${errText}`, "erro");
