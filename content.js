@@ -305,17 +305,39 @@ function preencherCampoData(elData, dataStr) {
   const dataIso = `${ano}-${mes}-${dia}`;
   const dateObj = new Date(Number(ano), Number(mes) - 1, Number(dia), 12, 0, 0);
 
-  // 1. Simula foco real (incluindo focusin para o React ativar FormInput_focus_F8Lqn)
-  try {
-    elData.focus();
-    elData.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
-    elData.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-  } catch(e) {}
-
-  // 2. Aplica o patch no moment.js do SoftExpert
+  // 1. Aplica o patch no moment.js do SoftExpert
   injetarPatchMomentEmTodosOsDocs();
 
-  // 3. Tenta invocar via React Fiber / Props (DayPickerInput onDayChange)
+  // 2. Foca no elemento e seleciona todo o texto existente (preparando para Ctrl+V / insertText)
+  try {
+    elData.focus();
+    elData.select();
+  } catch(e) {}
+
+  // 3. Simula colagem nativa idêntica ao Ctrl+V (execCommand insertText)
+  let colouSucesso = false;
+  try {
+    colouSucesso = elData.ownerDocument.execCommand("insertText", false, dataBr);
+  } catch(e) {}
+
+  // 4. Se execCommand não preencheu, aplica via setter nativo com eventos de colagem
+  if (!colouSucesso || !elData.value || !elData.value.includes(dia)) {
+    setNativeValue(elData, dataBr);
+  }
+
+  // 5. Dispara eventos de input e paste para o React/máscara reconhecerem
+  try {
+    elData.dispatchEvent(new InputEvent("input", {
+      bubbles: true,
+      cancelable: true,
+      inputType: "insertFromPaste",
+      data: dataBr
+    }));
+    elData.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+    elementDisparaChange(elData);
+  } catch(e) {}
+
+  // 6. Tenta invocar via React Fiber / Props (DayPickerInput onDayChange)
   try {
     let cur = elData;
     for (let i = 0; i < 5 && cur; i++) {
@@ -329,14 +351,9 @@ function preencherCampoData(elData, dataStr) {
       }
       cur = cur.parentElement;
     }
-  } catch (err) {
-    console.warn("Erro ao tentar onDayChange:", err);
-  }
+  } catch (err) {}
 
-  // 4. Define o valor nativo no input com a data BR
-  setNativeValue(elData, dataBr);
-
-  // 5. Também notifica o onChange do React diretamente se disponível
+  // 7. Notifica o onChange do React diretamente se disponível
   try {
     const pKey = Object.keys(elData).find(k => k.startsWith("__reactProps") || k.startsWith("__reactEventHandlers"));
     if (pKey && elData[pKey] && typeof elData[pKey].onChange === "function") {
@@ -348,14 +365,36 @@ function preencherCampoData(elData, dataStr) {
     }
   } catch (err) {}
 
-  // 6. Finaliza foco com blur e focusout
+  // 8. FECHA O CALENDÁRIO / OVERLAY IMEDIATAMENTE (sem deixá-lo aberto na tela)
+  try {
+    elData.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+    elData.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+    elData.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
+    elData.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
+  } catch(e) {}
+
+  // Remove o foco do campo de data
   try {
     elData.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
     elData.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     elData.blur();
   } catch(e) {}
 
+  // Oculta quaisquer overlays do calendário que o SoftExpert tenha aberto
+  try {
+    const overlays = elData.ownerDocument.querySelectorAll(".DayPickerInput-Overlay, .DayPickerInput-OverlayWrapper, [class*='DayPicker'][class*='Overlay']");
+    overlays.forEach(ov => {
+      ov.style.display = "none";
+    });
+  } catch(e) {}
+
   return true;
+}
+
+function elementDisparaChange(el) {
+  try {
+    el.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+  } catch(e) {}
 }
 
 function coletarTodosOsDocumentos() {

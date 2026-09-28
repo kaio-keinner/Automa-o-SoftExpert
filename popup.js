@@ -448,6 +448,11 @@ async function preencherFormularioNoSE() {
     return;
   }
 
+  // Copia a data para a área de transferência para garantir que esteja no Ctrl+V
+  try {
+    if (data) await navigator.clipboard.writeText(data);
+  } catch(e) {}
+
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.url || !tab.url.includes("softexpert.com")) {
     exibirStatus("Abra a aba do SoftExpert com o formulário de apontamento!", "erro");
